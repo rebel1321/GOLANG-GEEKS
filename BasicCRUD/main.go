@@ -21,25 +21,13 @@ import (
 // @BasePath /
 func main() {
 	config.ConnectDB()
+	config.ConnectCache()
 
 	app := fiber.New()
 	app.Get("/swagger/*", swagger.HandlerDefault)
 	app.Use(logger.New())
 
-	// app.Use(middlewares.SecurityHeaders)
-
-	// app.Use(basicauth.New(basicauth.Config{
-	// 	Users: map[string]string{
-	// 		"admin": "12345",
-	// 		"manager": "67890",
-	// 		"employee": "abcde",
-	// 	},
-	// 	Unauthorized: func(c *fiber.Ctx) error {
-	// 		return c.Status(fiber.StatusUnauthorized).JSON(fiber.Map{
-	// 			"error": "Unauthorized",
-	// 		})
-	// 	},
-	// }))
+	
 
 	app.Use(etag.New())
 	app.Post("/cars", handlers.CreateCar)

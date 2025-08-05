@@ -3,12 +3,14 @@ package models
 import (
 	"car/config"
 	"fmt"
+
+	"gorm.io/gorm"
 )
 
 var Cars = make(map[int]Car)
 
 type Car struct {
-	Id    int     `json:"id"`
+	Id    int     `json:"id" gorm:"primaryKey"`
 	Name  string  `json:"name"`
 	Model string  `json:"model"`
 	Brand string  `json:"brand"`
@@ -17,40 +19,33 @@ type Car struct {
 }
 
 func (c *Car) Insert() {
-	query := `INSERT INTO cars (name, model, brand, year, price) VALUES ($1, $2, $3, $4, $5) RETURNING id`
-	if err := config.DB.QueryRow(query, c.Name, c.Model, c.Brand, c.Year, c.Price).Scan(&c.Id); err != nil {
-		fmt.Errorf("Error inserting car: %v\n", err)
-	
-	}
 
+	if err := config.DB.Create(&c).Error; err != nil {
+		fmt.Errorf("Error inserting car: %v\n", err)
+	}
 }
 func (c *Car) Get() error {
-	query := `SELECT id, name, model, brand, year, price FROM cars WHERE id = $1`
-	err := config.DB.QueryRow(query, c.Id).Scan(&c.Id, &c.Name, &c.Model, &c.Brand, &c.Year, &c.Price)
-	if err != nil {
-		return fmt.Errorf("car not found: %v", err)
+
+	if err := config.DB.First(c, c.Id).Error; err != nil {
+		if err == gorm.ErrRecordNotFound {
+			fmt.Printf("Error getting car: %v\n", err)
+			return err 
+		}
 	}
 	return nil
 }
 
 
 func (c *Car) Delete() error {
-	query := `DELETE FROM cars WHERE id = $1`
-	result, err := config.DB.Exec(query, c.Id)
-	if err != nil {
-		return fmt.Errorf("error deleting car: %v", err)
-	}
-	rowsAffected, _ := result.RowsAffected()
-	if rowsAffected == 0 {
-		return fmt.Errorf("car with id %d not found", c.Id)
+	if err := config.DB.Delete(c).Error; err != nil {
+		fmt.Printf("Error deleting car: %v\n", err)
+		return err
 	}
 	return nil
 }
 func (c *Car) Update() {
-	query := `UPDATE cars SET name = $1, model = $2, brand = $3, year = $4, price = $5 WHERE id = $6`
-	if _, err := config.DB.Exec(query, c.Name, c.Model, c.Brand, c.Year, c.Price, c.Id); err != nil {
-		fmt.Errorf("Error updating car: %v\n", err)
-
+	if err := config.DB.Save(c).Error; err != nil {
+		fmt.Printf("Error updating car: %v\n", err)
 	}
 
 }

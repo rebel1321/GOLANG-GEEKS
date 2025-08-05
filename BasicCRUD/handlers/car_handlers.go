@@ -1,11 +1,16 @@
 package handlers
 
 import (
+	"car/config"
 	"car/models"
+	"encoding/json"
 	"fmt"
+	"strconv"
 	"sync"
+	"time"
 
 	"github.com/gofiber/fiber/v2"
+	"github.com/redis/go-redis/v9"
 )
 
 
@@ -55,6 +60,7 @@ func CreateCar(c *fiber.Ctx) error {
 // @Failure      400  {object}  map[string]string
 // @Router       /cars/{id} [get]
 func GetCar(c *fiber.Ctx) error {
+
 	mu.Lock()
 	defer mu.Unlock()
 
@@ -65,15 +71,33 @@ func GetCar(c *fiber.Ctx) error {
 			"details": err.Error(),
 		})
 	}
-
+	
 	car := &models.Car{Id: id}
+	val,err:= config.Cache.Get(c.Context(), strconv.FormatInt(int64(id), 10)).Result()
+	if err != nil {
+		if err != redis.Nil {
+			fmt.Printf("Key is not added in the cache: %v\n", id)
+		}
+		fmt.Printf("Unable to get the key from redis: %v\n", err)
+	}else{
+		fmt.Println(val)
+		if err := json.Unmarshal([]byte(val), car); err != nil {
+			fmt.Printf("Error unmarshalling car data: %v\n", err)
+		}
+		return c.Status(fiber.StatusOK).JSON(car)
+
+	}
 	if err := car.Get(); err != nil {
 		return c.Status(fiber.StatusNotFound).JSON(fiber.Map{
 			"error": "Car not found",
 			"details": err.Error(),
 		})
 	}
-
+	b, _ := json.Marshal(car)
+	_, err = config.Cache.Set(c.Context(), strconv.FormatInt(int64(id), 10), b, 60*time.Minute).Result()
+	if err != nil {
+		fmt.Printf("Error setting key in cache: %v\n", err)
+	}
 	return c.Status(fiber.StatusOK).JSON(car)
 }
 
