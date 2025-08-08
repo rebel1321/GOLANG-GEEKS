@@ -3,6 +3,7 @@ package handlers
 import (
 	"car/config"
 	"car/models"
+	"context"
 	"encoding/json"
 	"fmt"
 	"strconv"
@@ -11,10 +12,28 @@ import (
 
 	"github.com/gofiber/fiber/v2"
 	"github.com/redis/go-redis/v9"
+	"go.mongodb.org/mongo-driver/bson"
+	"go.mongodb.org/mongo-driver/mongo/options"
 )
 
 
 var mu sync.Mutex
+func getId(ctx context.Context) (int, error) {
+	col := config.Client.Database("car-inventory").Collection("counters")
+	var counter struct {
+		ID  string `bson:"id"`
+		Seq int    `bson:"seq"`
+	}
+	filter := bson.M{"id": "car_id"}
+	update := bson.M{"$inc": bson.M{"seq": 1}}
+	opts := options.FindOneAndUpdate().SetReturnDocument(options.After).SetUpsert(true)
+
+	if err := col.FindOneAndUpdate(ctx, filter, update, opts).Decode(&counter); err != nil {
+		return 0, err
+	}
+	return counter.Seq, nil
+}
+
 
 // CreateCar godoc
 // @Summary      Create a new car
@@ -42,9 +61,22 @@ func CreateCar(c *fiber.Ctx) error {
 			"details": err.Error(),
 		})
 	}
-
-	car.Insert()
-	fmt.Printf("Car created: %+v\n", car)
+	id,err := getId(c.Context())
+	if err!=nil{
+		id=123
+	}
+	car.Id=id
+	// car.Insert()
+	coll:=config.Client.Database("car-inventory").Collection("cars")
+	result,err := coll.InsertOne(c.Context(), car)
+	if err != nil {
+		return c.Status(fiber.StatusBadRequest).JSON(fiber.Map{
+			"error": "Unable to add car",
+			"details": err.Error(),
+		})
+	}
+	fmt.Println(result.InsertedID)
+	fmt.Printf("Car created: %+v\n", car.Id)
 	return c.Status(fiber.StatusCreated).JSON(car)
 }
 

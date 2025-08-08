@@ -3,32 +3,32 @@ package config
 import (
 	"context"
 	"fmt"
+	"time"
 
+	"github.com/jmoiron/sqlx"
 	_ "github.com/lib/pq"
 	"github.com/redis/go-redis/v9"
-	"gorm.io/driver/postgres"
-	"gorm.io/gorm"
+	"go.mongodb.org/mongo-driver/mongo"
+	"go.mongodb.org/mongo-driver/mongo/options"
 )
 
-var DB *gorm.DB
+// var DB *gorm.DB
+var DB *sqlx.DB
 var Cache *redis.Client
+var Client *mongo.Client
 
 
 func ConnectDB() {
 	dsn:="user=postgres password=Password123@ database=CarInventory host=localhost port=5432 sslmode=disable"
 
-	db,err := gorm.Open(postgres.Open(dsn), &gorm.Config{})
+	db,err := sqlx.Connect("postgres",dsn)
 	if err!=nil{
 		fmt.Println("Error connecting to the database:", err)
 		panic(err)
 	}
 
-	sqlDB, err := db.DB()
-	if err!=nil{
-		fmt.Println("Unable to move to gorm", err)
-		panic(err)
-	}
-	if err := sqlDB.Ping(); err != nil {
+	
+	if err := db.Ping(); err != nil {
 		fmt.Println("Error pinging the database:", err)
 		panic(err)
 	}
@@ -49,4 +49,16 @@ func ConnectCache() {
 	}
 	fmt.Println("Connected to Redis successfully")
 	Cache = rdb
+}
+func ConnectMongo(){
+	opts := options.Client().ApplyURI("mongodb://localhost:27017")
+	ctx,cancel := context.WithTimeout(context.Background(), 10*time.Second)
+	defer cancel()
+	client, err := mongo.Connect(ctx, opts)
+	if err != nil {
+		fmt.Println("Error connecting to MongoDB:", err)
+		panic(err)
+	}
+	Client = client
+	fmt.Println("Connected to MongoDB successfully")
 }
