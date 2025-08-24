@@ -57,9 +57,41 @@ var queryType = graphql.NewObject(graphql.ObjectConfig{
 	},
 })
 
-var schema, _ = graphql.NewSchema(graphql.SchemaConfig{
-	Query: queryType,
+var mutationType = graphql.NewObject(graphql.ObjectConfig{
+	Name: "mutation",
+	Fields: graphql.Fields{
+		"addUser": &graphql.Field{
+			Type: userType,
+			Args: graphql.FieldConfigArgument{
+				"name": &graphql.ArgumentConfig{
+					Type: graphql.NewNonNull(graphql.String),
+				},
+				"age": &graphql.ArgumentConfig{
+					Type: graphql.NewNonNull(graphql.Int),
+				},
+			},
+			Resolve: func(p graphql.ResolveParams) (interface{}, error) {
+				name := p.Args["name"].(string)
+				age := p.Args["age"].(int)
+
+				user := User{
+					Id:   fmt.Sprintf("%d", len(users)+1),
+					Name: name,
+					Age:  age,
+				}
+				users = append(users, user)
+				return user, nil
+			},
+		},
+	},
 })
+
+var schema, _ = graphql.NewSchema(graphql.SchemaConfig{
+	Query:    queryType,
+	Mutation: mutationType,
+})
+
+
 
 func main() {
 	h := handler.New(&handler.Config{
