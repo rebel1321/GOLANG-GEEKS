@@ -100,6 +100,6 @@ func main() {
 		GraphiQL: true,
 	})
 	http.Handle("/graphql", h)
-	fmt.Println("Our first GraphQL server is running on http://localhost:8080/graphql")
+	fmt.Println("Our first GraphQL server is starting on http://localhost:8080/graphql")
 	http.ListenAndServe(":8080", nil)
 }
